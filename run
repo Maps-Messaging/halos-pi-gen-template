@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+#
+# usage: ./run command [argument ...]
+#
+# Commands used during development / CI.
+
+set -o nounset
+set -o pipefail
+set -o errexit
+
+PROJECT_ROOT=${0%/*}
+if [[ $0 != $PROJECT_ROOT && $PROJECT_ROOT != "" ]]; then
+  cd "$PROJECT_ROOT"
+fi
+readonly PROJECT_ROOT=$(pwd)
+
+# Path to local halos-pi-gen checkout
+HALOS_PI_GEN="${PROJECT_ROOT}/../halos-pi-gen"
+
+################################################################################
+# Build Commands
+
+function build {
+  #@ Build a specific image variant
+  #@ Category: Build
+
+  _require docker git
+
+  if [ $# -lt 1 ]; then
+    echo "Error: config file required" >&2
+    echo "" >&2
+    echo "Usage: ./run build <config-file>" >&2
+    echo "" >&2
+    echo "Available configs:" >&2
+    ls -1 config.* 2>/dev/null | sed 's/^/  /' >&2
+    return 1
+  fi
+
+  local config="$1"
+
+  if [ ! -f "$config" ]; then
+    echo "Error: config file '$config' not found" >&2
+    return 1
+  fi
+
+  if [ ! -d "$HALOS_PI_GEN" ]; then
+    echo "Error: halos-pi-gen not found at $HALOS_PI_GEN" >&2
+    echo "Clone it with: git clone https://github.com/halos-org/halos-pi-gen ../halos-pi-gen" >&2
+    return 1
+  fi
+
+  local build_dir="${PROJECT_ROOT}/pi-gen"
+
+  # Clone or update pi-gen
+  if [ ! -d "$build_dir" ]; then
+    echo "Cloning pi-gen..."
+    git clone --depth 1 --branch arm64 https://github.com/RPi-Distro/pi-gen.git "$build_dir"
+  else
+    echo "Updating pi-gen..."
+    git -C "$build_dir" fetch origin
+    git -C "$build_dir" checkout arm64
+    git -C "$build_dir" reset --hard origin/arm64
+  fi
+
+  # Layer 1: halos-pi-gen stages into pi-gen
+  echo "Assembling build tree..."
+  cp "$HALOS_PI_GEN/VERSION" "$build_dir/VERSION"
+  cp -R "$HALOS_PI_GEN"/stage-* "$build_dir/"
+  touch "$build_dir/stage5/SKIP"
+  touch "$build_dir/stage2/SKIP_IMAGES"
+  touch "$build_dir/stage4/SKIP_IMAGES"
+
+  # Layer 2: custom stages on top
+  cp -R stage-* "$build_dir/"
+  cp "$config" "$build_dir/config"
+
+  # Workaround: avoid dpkg conffile prompts during build
+  # (halos-pi-gen modifies /etc/default/gpsd before gpsd package is installed)
+  sed -i'' -e 's|apt-get -o Acquire::Retries=3 install|apt-get -o Acquire::Retries=3 -o Dpkg::Options::="--force-confold" install|g' "$build_dir/build.sh"
+
+  local halos_version
+  halos_version=$(cat "$HALOS_PI_GEN/VERSION")
+  local img_name
+  img_name=$(grep '^IMG_NAME=' "$config" | head -1 | cut -d'"' -f2)
+  local img_filename="${img_name}_${halos_version}"
+
+  echo "Building $img_name (version $halos_version)..."
+  cd "$build_dir"
+  RELEASE='trixie' IMG_FILENAME="$img_filename" ARCHIVE_FILENAME="$img_filename" ./build-docker.sh
+  cd "$PROJECT_ROOT"
+
+  echo "Build complete. Output in pi-gen/deploy/"
+}
+
+function clean {
+  #@ Remove pi-gen clone and pigen_work containers
+  #@ Category: Utilities
+
+  _require docker
+
+  local containers
+  containers=$(docker ps -a --filter "name=pigen_work" --format "{{.Names}}" 2>/dev/null || true)
+
+  if [ -n "$containers" ]; then
+    echo "Cleaning up pigen_work containers..."
+    # shellcheck disable=SC2086
+    docker rm -v $containers 2>/dev/null || true
+  fi
+
+  if [ -d "${PROJECT_ROOT}/pi-gen" ]; then
+    echo "Removing pi-gen build directory..."
+    # Use Docker to remove root-owned files from the build
+    docker run --rm -v "${PROJECT_ROOT}/pi-gen:/pi-gen" debian:trixie rm -rf /pi-gen/work /pi-gen/deploy 2>/dev/null || true
+    rm -rf "${PROJECT_ROOT}/pi-gen"
+  fi
+
+  echo "Cleanup completed"
+}
+
+################################################################################
+# Help System
+
+function help {
+  #@ Show this help message
+  #@ Category: Core
+  echo "Available commands:"
+  echo ""
+
+  awk '/^function / {
+    fname = $2
+    sub(/[({].*/, "", fname)
+    getline
+    if ($0 ~ /#@/) {
+      desc = $0
+      sub(/.*#@ /, "", desc)
+      sub(/ *$/, "", desc)
+      getline
+      if ($0 ~ /#@ Category:/) {
+        cat = $0
+        sub(/.*Category: /, "", cat)
+        sub(/ *$/, "", cat)
+        if (!seen[cat]++) categories[++cat_count] = cat
+        commands[cat, ++cmd_count[cat]] = fname
+        descriptions[cat, cmd_count[cat]] = desc
+      }
+    }
+  }
+  END {
+    for (i = 1; i <= cat_count; i++) {
+      cat = categories[i]
+      print "\n" cat ":"
+      for (j = 1; j <= cmd_count[cat]; j++) {
+        printf "  %-30s %s\n", commands[cat, j], descriptions[cat, j]
+      }
+    }
+  }' "$0"
+
+  echo ""
+  echo "Usage: ./run <command> [arguments...]"
+}
+
+################################################################################
+# Internal Utilities
+
+function _require {
+  for cmd in "$@"; do
+    if ! command -v "$cmd" &>/dev/null; then
+      echo "Error: required command '$cmd' not found" >&2
+      return 1
+    fi
+  done
+}
+
+################################################################################
+
+TIMEFORMAT=$'\nTask completed in %3lR'
+time "${@:-help}"

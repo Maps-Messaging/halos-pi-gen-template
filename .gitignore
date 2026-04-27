@@ -1,0 +1,5 @@
+pi-gen/
+artifacts/
+build.log
+*.img
+*.xz

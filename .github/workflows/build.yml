@@ -1,0 +1,216 @@
+name: Build Custom HaLOS Image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.repository }}-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: "${{ matrix.name }}"
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      halos_version: ${{ steps.prep.outputs.halos_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Halos-Desktop-Marine-HALPI2-AP-Ais
+            config: config.halos-desktop-marine-halpi2-ap-ais
+            release: trixie
+            enabled: true
+
+    steps:
+      - name: Free disk space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h /
+          sudo docker system prune --all --force --volumes
+          sudo swapoff -a
+          sudo rm -rf /mnt/swapfile /swapfile
+          sudo rm -rf \
+            /opt/google/chrome \
+            /opt/microsoft/msedge \
+            /opt/microsoft/powershell \
+            /opt/mssql-tools \
+            /opt/hostedtoolcache \
+            /opt/pipx \
+            /usr/lib/mono \
+            /usr/local/julia* \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/dotnet \
+            /usr/share/swift \
+            /usr/local/share/boost \
+            /opt/ghc \
+            /usr/local/go \
+            /root/.cache \
+            /home/runner/.cache
+          sudo apt-get purge -y \
+            apache2 nginx ant azure-cli snapd \
+            php8* r-base imagemagick gfortran ghc* google-cloud-cli \
+            google-chrome-stable firefox mysql-server mysql-client \
+            postgresql-client-* temurin-* 2>/dev/null || true
+          sudo apt-get autoremove -y
+          sudo apt-get autoclean
+          sudo rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
+          sudo rm -rf /usr/local/.ghcup /usr/share/miniconda /usr/lib/jvm
+          echo "=== Disk space after cleanup ==="
+          df -h /
+
+      - name: Checkout custom repo
+        if: matrix.enabled != false
+        uses: actions/checkout@v4
+
+      - name: Checkout halos-pi-gen
+        if: matrix.enabled != false
+        uses: actions/checkout@v4
+        with:
+          repository: halos-org/halos-pi-gen
+          path: halos-pi-gen
+
+      - name: Checkout pi-gen
+        if: matrix.enabled != false
+        uses: actions/checkout@v4
+        with:
+          repository: RPi-Distro/pi-gen
+          ref: arm64
+          path: pi-gen
+
+      - name: Prepare
+        if: matrix.enabled != false
+        id: prep
+        run: |
+          sudo apt-get update && sudo apt-get install -y coreutils quilt parted qemu-utils qemu-user-static debootstrap zerofree zip dosfstools libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc kmod kpartx arch-test xxd pigz
+          HALOS_VERSION=$(cat halos-pi-gen/VERSION)
+          IMG_NAME=$(grep '^IMG_NAME=' ${{ matrix.config }} | head -1 | cut -d'"' -f2)
+          IMG_FILENAME="${IMG_NAME}_${HALOS_VERSION}"
+          echo "IMG_FILENAME=$IMG_FILENAME" >> $GITHUB_ENV
+          echo "halos_version=$HALOS_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Assemble build tree
+        if: matrix.enabled != false
+        run: |
+          # Layer 1: halos-pi-gen stages into pi-gen
+          cp halos-pi-gen/VERSION pi-gen/VERSION
+          cp -R halos-pi-gen/stage-* pi-gen/
+          touch pi-gen/stage5/SKIP
+          touch pi-gen/stage{2,4}/SKIP_IMAGES
+
+          # Layer 2: custom stages on top
+          cp -R stage-* pi-gen/
+          cp ${{ matrix.config }} pi-gen/config
+
+          # Workaround: avoid dpkg conffile prompts during build
+          sed -i 's|apt-get -o Acquire::Retries=3 install|apt-get -o Acquire::Retries=3 -o Dpkg::Options::="--force-confold" install|g' pi-gen/build.sh
+
+          # Delete previous stage rootfs after copy to save disk space
+          sed -i '/rsync -aHAXx/a\    rm -rf "${PREV_ROOTFS_DIR}"' pi-gen/scripts/common
+
+      - name: Build image
+        if: matrix.enabled != false
+        run: |
+          cd pi-gen
+          sudo RELEASE='${{ matrix.release }}' GIT_HASH=${{ github.sha }} IMG_FILENAME=${{ env.IMG_FILENAME }} ARCHIVE_FILENAME=${{ env.IMG_FILENAME }} ./build-docker.sh
+
+      - name: Upload image artifact
+        if: matrix.enabled != false
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.IMG_FILENAME }}
+          path: pi-gen/deploy/*.xz
+          retention-days: 14
+
+  release:
+    name: Draft GitHub Release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+          merge-multiple: true
+
+      - name: Calculate next release tag
+        id: calc_tag
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const version = '${{ needs.build.outputs.halos_version }}';
+
+            const tags = await github.rest.repos.listTags({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+
+            const datePattern = new RegExp(`^v${version.replace(/\./g, '\\.')}-(\\d+)$`);
+            let maxBuild = 0;
+
+            for (const tag of tags.data) {
+              const match = tag.name.match(datePattern);
+              if (match) {
+                const buildNum = parseInt(match[1]);
+                if (buildNum > maxBuild) {
+                  maxBuild = buildNum;
+                }
+              }
+            }
+
+            const nextBuild = maxBuild + 1;
+            const newTag = `v${version}-${nextBuild}`;
+
+            core.setOutput('tag', newTag);
+            core.setOutput('version', version);
+            core.setOutput('build', nextBuild);
+
+      - name: Delete existing draft releases
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const releases = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            for (const release of releases.data) {
+              if (release.draft === true && release.prerelease === false) {
+                console.log(`Deleting draft release: ${release.name || release.tag_name || release.id}`);
+                await github.rest.repos.deleteRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: release.id
+                });
+              }
+            }
+
+      - name: Create draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.calc_tag.outputs.tag }}
+          name: "Custom HaLOS Images - ${{ steps.calc_tag.outputs.tag }}"
+          body: |
+            Automated build from commit ${{ github.sha }}
+
+            **Based on HaLOS ${{ steps.calc_tag.outputs.version }}**
+
+            ### Included Images
+            - Halos-Desktop-Marine-HALPI2-AP-Ais
+
+            ### Installation
+            Flash images using [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
+          files: all-artifacts/*
+          draft: true

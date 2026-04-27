@@ -1,0 +1,71 @@
+# pi-gen config for the example "AIS" variant.
+#
+# This file is sourced by pi-gen's build.sh and controls image identity,
+# stage selection, and first-boot defaults. When forking this template,
+# copy this file to a new name (e.g. config.my-variant) and adjust the
+# values marked "Change when forking".
+#
+# See https://github.com/RPi-Distro/pi-gen for the full list of variables
+# pi-gen recognises.
+
+# === Image identity ===
+
+# Output image filename prefix. Change when forking.
+IMG_NAME="Halos-Desktop-Marine-HALPI2-AP-Ais"
+
+# Human-readable release name embedded in image metadata. Change when forking.
+PI_GEN_RELEASE="HaLOS Desktop Marine HALPI2 AP Ais"
+
+# Used by pi-gen for image provenance metadata. Point at your fork.
+PI_GEN_REPO="https://github.com/halos-org/halos-pi-gen-template"
+
+# === Build infrastructure ===
+
+# Date stamp appended to image filenames. Read from VERSION at build time.
+IMG_DATE=$(cat VERSION)
+
+# Final image and archive filenames (rarely changed).
+IMG_FILENAME="${IMG_NAME}_${IMG_DATE}"
+ARCHIVE_FILENAME="${IMG_NAME}_${IMG_DATE}"
+
+# Docker container name used during the build. Must be unique per variant
+# if you build multiple variants concurrently on the same host.
+CONTAINER_NAME="pigen_work_halos-desktop-marine-halpi2-ap-ais"
+
+# Compression for the final deployable image.
+DEPLOY_COMPRESSION="xz"
+COMPRESSION_LEVEL=6
+
+# === Stage list ===
+
+# Ordered list of pi-gen stages to run. The custom stage(s) for this
+# variant must come after the halos-pi-gen stages and before stage-export.
+# When adding your own stage, insert it just before stage-export.
+STAGE_LIST="stage0 stage1 stage2 stage3 stage4 stage-common stage-halos-base stage-halpi2-common stage-halos-halpi2 stage-halos-desktop stage-halos-headless stage-halos-marine stage-halpi2-marine stage-custom-ais stage-export"
+
+# === User defaults (first boot) ===
+
+# Default username on first boot.
+FIRST_USER_NAME="pi"
+
+# Default first-boot password. CHANGE THIS for production images.
+FIRST_USER_PASS="halos"
+
+# Set to "1" to keep "pi" as the username on first boot. Set to "0" to
+# allow the user to be renamed via the standard Raspberry Pi OS firstrun
+# flow.
+DISABLE_FIRST_BOOT_USER_RENAME="1"
+
+# Default hostname applied at first boot.
+TARGET_HOSTNAME="halos"
+
+# === Localization ===
+
+# Two-letter ISO country code for WiFi regulatory domain. Change to
+# match your region (e.g. "US", "DE", "FI").
+WPA_COUNTRY="GB"
+
+# === Services ===
+
+# Enable SSH on first boot (1 = enabled, 0 = disabled).
+ENABLE_SSH=1
