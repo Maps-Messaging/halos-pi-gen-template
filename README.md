@@ -174,4 +174,4 @@ Add any pi-gen variable you need; this list is just the ones the template sets.
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+BSD 3-Clause. See [`LICENSE`](LICENSE).
