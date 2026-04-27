@@ -1,0 +1,43 @@
+# pi-gen config for the example "Waveshare CAN" variant.
+#
+# Builds a headless HALPI2 marine image that enables CH0 of the
+# Waveshare 2-Channel Isolated CAN HAT as can1, on top of the HALPI2
+# onboard CAN (can0). CH1 is intentionally not enabled — its default
+# chip-select pin (GPIO 7) conflicts with the HALPI2 SPI0 CS remap.
+
+# === Image identity ===
+
+IMG_NAME="Halos-Marine-HALPI2-WaveshareCAN"
+PI_GEN_RELEASE="HaLOS Marine HALPI2 Waveshare CAN"
+PI_GEN_REPO="https://github.com/halos-org/halos-pi-gen-template"
+
+# === Build infrastructure ===
+
+IMG_DATE=$(cat VERSION)
+IMG_FILENAME="${IMG_NAME}_${IMG_DATE}"
+ARCHIVE_FILENAME="${IMG_NAME}_${IMG_DATE}"
+CONTAINER_NAME="pigen_work_halos-marine-halpi2-waveshare-can"
+
+DEPLOY_COMPRESSION="xz"
+COMPRESSION_LEVEL=6
+
+# === Stage list ===
+
+# Mirrors halos-pi-gen's config.halos-marine-halpi2 STAGE_LIST, with
+# stage-custom-waveshare-can inserted before stage-export.
+STAGE_LIST="stage0 stage1 stage2 stage-common stage-halos-base stage-halpi2-common stage-halos-halpi2 stage-halos-headless stage-halos-marine stage-halpi2-marine stage-custom-waveshare-can stage-export"
+
+# === User defaults (first boot) ===
+
+FIRST_USER_NAME="pi"
+FIRST_USER_PASS="halos"
+DISABLE_FIRST_BOOT_USER_RENAME="1"
+TARGET_HOSTNAME="halos"
+
+# === Localization ===
+
+WPA_COUNTRY="GB"
+
+# === Services ===
+
+ENABLE_SSH=1
