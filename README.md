@@ -153,7 +153,7 @@ Add any pi-gen variable you need; this list is just the ones the template sets.
 
 **"halos-pi-gen not found at ../halos-pi-gen"** — clone it as a sibling: `git clone https://github.com/halos-org/halos-pi-gen ../halos-pi-gen`.
 
-**Out of disk space during local build** — pi-gen needs ~20 GB free. The CI workflow includes an aggressive disk-cleanup step you can adapt for local use, but the simplest fix is to build on a host with more free space.
+**Out of disk space during local build** — pi-gen builds keep an intermediate rootfs per stage and the final image alongside the compressed output. The CI workflow includes an aggressive disk-cleanup step you can adapt for local use, but the simplest fix is to build on a host with more free space.
 
 **Build hangs or fails partway** — `./run clean` removes the `pi-gen/` working directory and any leftover `pigen_work*` containers. Re-run the build from a clean state.
 
