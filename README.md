@@ -47,7 +47,7 @@ After forking this repo, push to `main`. The workflow at `.github/workflows/buil
 ```
 gh repo fork halos-org/halos-pi-gen-template
 # edit, commit, push to your fork's main
-# wait ~30-60 minutes
+# wait for the CI workflow run to finish
 gh release list
 ```
 
