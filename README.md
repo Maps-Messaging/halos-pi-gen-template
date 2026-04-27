@@ -22,6 +22,10 @@ Each layer adds stages on top of the previous one. Your stages run last and have
 
 The build is driven by a config file (e.g. `config.halos-desktop-marine-halpi2-ap-ais`), which lists the stages to run and the image identity, and one or more `stage-custom-*` directories containing the work to do.
 
+### Choosing a base image
+
+`halos-pi-gen` ships several pre-defined image variants — desktop marine, headless marine, HALPI2 base, etc. — each represented by its own config file in that repo. Your custom image does not have to start from the marine desktop variant used in the example here. To base your build on a different `halos-pi-gen` variant, copy the `STAGE_LIST` from the corresponding `config.*` file in `halos-pi-gen` into your config, then append your `stage-custom-*` entry just before `stage-export`. Everything else in the template (your custom stage, the `run` script, CI workflow) works the same regardless of which base you choose.
+
 ## The example variant
 
 The repository ships with one working example:
@@ -82,7 +86,7 @@ The full lifecycle of forking and adapting this template:
    * `IMG_NAME` and `PI_GEN_RELEASE` — your image's display name.
    * `PI_GEN_REPO` — point at your fork's URL.
    * `CONTAINER_NAME` — must be unique if you build multiple variants on the same host.
-   * `STAGE_LIST` — replace `stage-custom-ais` with the name of your new stage directory. Keep the rest in order.
+   * `STAGE_LIST` — replace `stage-custom-ais` with the name of your new stage directory. If you want a different base image (e.g. headless marine, plain HALPI2, …), replace the rest of the list with the `STAGE_LIST` from the corresponding `config.*` file in [`halos-org/halos-pi-gen`](https://github.com/halos-org/halos-pi-gen). Your `stage-custom-*` entry goes just before `stage-export`.
    * Anything else (hostname, WiFi country, default password, …) you want to change. See inline comments in the config file for what each variable does.
 
 4. **Copy the stage directory.** From `stage-custom-ais/` to `stage-custom-<your-variant>/`. The structure is:
