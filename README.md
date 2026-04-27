@@ -28,15 +28,18 @@ The build is driven by a config file (e.g. `config.halos-desktop-marine-halpi2-a
 
 ## The example variant
 
-The repository ships with one working example:
+The repository ships with two working examples:
 
 | Config | Stage | What it does |
 |---|---|---|
 | `config.halos-desktop-marine-halpi2-ap-ais` | `stage-custom-ais` | Builds a HALPI2 marine image with the [`ais-forwarder`](https://www.npmjs.com/package/ais-forwarder) Signal K plugin pre-installed. |
+| `config.halos-marine-halpi2-waveshare-can` | `stage-custom-waveshare-can` | Adds CH0 of the [Waveshare 2-Channel Isolated CAN HAT](https://www.waveshare.com/2-ch-can-hat.htm) as `can1` alongside the HALPI2 onboard `can0`. Demonstrates a hardware/device-tree customization. |
 
-The `stage-custom-ais` stage downloads the plugin tarball from npm at build time and extracts it into the Signal K data directory inside the image rootfs. Nothing fancy — it is the smallest meaningful customization that demonstrates the pattern.
+The `stage-custom-ais` stage downloads the plugin tarball from npm at build time and extracts it into the Signal K data directory inside the image rootfs — the smallest meaningful customization that demonstrates the pattern.
 
-Use it as a working reference, then replace it with your own stage when forking.
+The `stage-custom-waveshare-can` stage appends an `mcp2515-can0` device-tree overlay line to `/boot/firmware/config.txt` and installs a udev rule that pins interface names by SPI bus path so the onboard controller is always `can0` and the HAT is always `can1`. CH1 of the HAT cannot be enabled alongside the onboard controller: SPI0's two chip-select lines are already taken by CH0 (CS0) and the HALPI2 onboard MCP251xFD (CS1, remapped to GPIO 6). Enabling a second HAT channel would require moving it to SPI1 with a custom device-tree overlay. Bit rate, queue length, and `systemd-networkd` setup are inherited from `stage-halpi2-common`'s `can*` matchers, so no per-interface network config is needed.
+
+Use either as a working reference, then replace it with your own stage when forking.
 
 ## Quick start
 
