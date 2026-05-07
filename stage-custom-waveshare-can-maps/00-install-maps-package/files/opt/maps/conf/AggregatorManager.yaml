@@ -1,0 +1,1142 @@
+#
+# Copyright [ 2024 - 2026 ] [Maps Messaging B.V.]
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+
+AggregatorManager:
+  data:
+    stripeCount: 0
+    maxBatchPerAggregator: 128
+    idleSleepMs: 10
+    mailboxCapacity: 8192
+    maxAggregators: 0
+
+    aggregatorConfigList:
+      - name: DRONE-TWIN-CATL-DYNAMIC-UPDATE-TO-PROTOBUF
+        enabled: true
+        outputTopic: "4817/maps/protobuf/home/MessageTypeEnum_DYNAMIC_UPDATE"
+        windowDurationMs: 1000
+        timeoutMs: 1000
+        maxEventsPerTopic: 1
+        windowCloseMode: "TIMEOUT_ONLY"
+        inputs:
+          - topicName: "/state/twins/#"
+            contributionMode: LAST
+        outputTransformers:
+          - type: jsonmapper
+            jsonMapper:
+              operations:
+
+                #
+                # Header
+                #
+
+                - to: header.message_type
+                  defaultValue: "MessageTypeEnum_DYNAMIC_UPDATE"
+
+                - from: twinId
+                  to: header.source
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - to: header.version
+                  defaultValue: "0.3.0"
+
+                - from: lastSeenAt
+                  to: header.time_sent
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Track identity
+                #
+
+                - from: uuid
+                  to: body.operation.put_value.track.identifier
+                  ignoreMissing: true
+
+                - from: twinId
+                  to: body.operation.put_value.track.source_of_information
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - from: callSign
+                  to: body.operation.put_value.track.description.name
+                  ignoreMissing: true
+
+                - from: description
+                  to: body.operation.put_value.track.description.description
+                  ignoreMissing: true
+
+                #
+                # Track description
+                #
+
+                - to: body.operation.put_value.track.description.version
+                  defaultValue: "10"
+
+                - to: body.operation.put_value.track.description.context_type
+                  defaultValue: "ContextEnum_SIMULATION"
+
+                - to: body.operation.put_value.track.description.standard_identity
+                  defaultValue: "StandardIdentityEnum_FRIEND"
+
+                - to: body.operation.put_value.track.description.symbol_set
+                  defaultValue: "SymbolSetEnum_AIR"
+
+                - to: body.operation.put_value.track.description.status
+                  defaultValue: "EntityStatusEnum_PRESENT"
+
+                - to: body.operation.put_value.track.description.headquarters_task_force_dummy
+                  defaultValue: "HeadquartersTaskForceDummyEnum_NOT_APPLICABLE"
+
+                - to: body.operation.put_value.track.description.unit_echelon_equipment_mobility
+                  defaultValue: "UnitEchelonEquipmentMobilityEnum_UNKNOWN"
+
+                - to: body.operation.put_value.track.description.entity
+                  defaultValue: "11"
+
+                - to: body.operation.put_value.track.description.entity_type
+                  defaultValue: "04"
+
+                - to: body.operation.put_value.track.description.entity_subtype
+                  defaultValue: "00"
+
+                - to: body.operation.put_value.track.description.sector_1
+                  defaultValue: "00"
+
+                - to: body.operation.put_value.track.description.sector_2
+                  defaultValue: "00"
+
+                #
+                # Track times
+                #
+
+                - from: operationalUpdatedAt
+                  to: body.operation.put_value.track.timestamp
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: createdAt
+                  to: body.operation.put_value.track.time_of_initiation
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: lastSeenAt
+                  to: body.operation.put_value.track.time_of_validity
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Position
+                #
+
+                - from: geoPosition.latitude
+                  to: body.operation.put_value.track.pose.position.latitude_longitude_altitude.latitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.longitude
+                  to: body.operation.put_value.track.pose.position.latitude_longitude_altitude.longitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.altitudeMslMeters
+                  to: body.operation.put_value.track.pose.position.latitude_longitude_altitude.altitude.value[0].value
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - to: body.operation.put_value.track.pose.position.latitude_longitude_altitude.altitude.value[0].type
+                  defaultValue: "AltitudeTypeEnum_WGS"
+
+                #
+                # Orientation
+                #
+
+                - from: orientation.rollDegrees
+                  to: body.operation.put_value.track.pose.orientation.euler_angles.roll
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.pitchDegrees
+                  to: body.operation.put_value.track.pose.orientation.euler_angles.pitch
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.yawDegrees
+                  to: body.operation.put_value.track.pose.orientation.euler_angles.yaw
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                #
+                # Velocity
+                #
+
+                - from: groundSpeedMetersPerSecond
+                  to: body.operation.put_value.track.velocity.speed_course_climb_rate.speed
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: headingDegrees
+                  to: body.operation.put_value.track.velocity.speed_course_climb_rate.course
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: verticalSpeedMetersPerSecond
+                  to: body.operation.put_value.track.velocity.speed_course_climb_rate.climb_rate
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                #
+                # Track state
+                #
+
+                - to: body.operation.put_value.track.track_phase
+                  defaultValue: "TrackPhase_TRACKED"
+
+                - to: body.operation.put_value.track.description.organization
+                  defaultValue: "NATO"
+
+                - to: body.operation.put_value.track.description.nationality
+                  defaultValue: "Estonia"
+
+          - type: jsontoschema
+            messageName: "catl.hibw.messages.dynamic_update.DynamicUpdate"
+            format: "protobuf"
+
+      - name: DRONE-TWIN-CATL-NODE-DESCRIPTION-TO-PROTOBUF
+        enabled: true
+        outputTopic: "4817/maps/protobuf/home/MessageTypeEnum_NODE_DESCRIPTION"
+        windowDurationMs: 1000
+        timeoutMs: 60000
+        maxEventsPerTopic: 1
+        windowCloseMode: "TIMEOUT_ONLY"
+        emitFirstEventImmediately: true
+        inputs:
+          - topicName: "/state/twins/#"
+            contributionMode: LAST
+        outputTransformers:
+          - type: jsonmapper
+            jsonMapper:
+              operations:
+                #
+                # Header
+                #
+
+                - to: header.message_type
+                  defaultValue: "MessageTypeEnum_NODE_DESCRIPTION"
+
+                - from: twinId
+                  to: header.source
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - to: header.version
+                  defaultValue: "0.3.0"
+
+                - from: lastSeenAt
+                  to: header.time_sent
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Node body identity
+                #
+
+                - from: twinId
+                  to: body.source_of_information
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - from: uuid
+                  to: body.identifier
+                  ignoreMissing: true
+
+                - from: callSign
+                  to: body.description.name
+                  ignoreMissing: true
+
+                - from: description
+                  to: body.description.description
+                  ignoreMissing: true
+
+                #
+                # Description constants
+                #
+
+                - to: body.description.version
+                  defaultValue: "10"
+
+                - to: body.description.context_type
+                  defaultValue: "ContextEnum_SIMULATION"
+
+                - to: body.description.standard_identity
+                  defaultValue: "StandardIdentityEnum_FRIEND"
+
+                - to: body.description.symbol_set
+                  defaultValue: "SymbolSetEnum_AIR"
+
+                - to: body.description.status
+                  defaultValue: "EntityStatusEnum_PRESENT"
+
+                - to: body.description.headquarters_task_force_dummy
+                  defaultValue: "HeadquartersTaskForceDummyEnum_NOT_APPLICABLE"
+
+                - to: body.description.unit_echelon_equipment_mobility
+                  defaultValue: "UnitEchelonEquipmentMobilityEnum_UNKNOWN"
+
+                - to: body.description.entity
+                  defaultValue: "11"
+
+                - to: body.description.entity_type
+                  defaultValue: "04"
+
+                - to: body.description.entity_subtype
+                  defaultValue: "00"
+
+                - to: body.description.sector_1
+                  defaultValue: "00"
+
+                - to: body.description.sector_2
+                  defaultValue: "00"
+
+                - to: body.description.organization
+                  defaultValue: "NATO"
+
+                - to: body.description.nationality
+                  defaultValue: "Estonia"
+
+                #
+                # Node times
+                #
+
+                - from: operationalUpdatedAt
+                  to: body.timestamp
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: createdAt
+                  to: body.time_of_initiation
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: lastSeenAt
+                  to: body.time_of_validity
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Pose
+                #
+
+                - from: geoPosition.latitude
+                  to: body.pose.position.latitude_longitude_altitude.latitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.longitude
+                  to: body.pose.position.latitude_longitude_altitude.longitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.altitudeMslMeters
+                  to: body.pose.position.latitude_longitude_altitude.altitude.value[0].value
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - to: body.pose.position.latitude_longitude_altitude.altitude.value[0].type
+                  defaultValue: "AltitudeTypeEnum_WGS"
+
+                #
+                # Orientation
+                #
+
+                - from: orientation.rollDegrees
+                  to: body.pose.orientation.euler_angles.roll
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.pitchDegrees
+                  to: body.pose.orientation.euler_angles.pitch
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.yawDegrees
+                  to: body.pose.orientation.euler_angles.yaw
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                #
+                # Velocity
+                #
+
+                - from: groundSpeedMetersPerSecond
+                  to: body.velocity.speed_course_climb_rate.speed
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: headingDegrees
+                  to: body.velocity.speed_course_climb_rate.course
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: verticalSpeedMetersPerSecond
+                  to: body.velocity.speed_course_climb_rate.climb_rate
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+          - type: jsontoschema
+            messageName: "catl.hibw.messages.node.NodeDescription"
+            format: "protobuf"
+
+      - name: DRONE-TWIN-CATL-NODE-STATUS-TO-PROTOBUF
+        enabled: true
+        outputTopic: "4817/maps/protobuf/home/MessageTypeEnum_NODE_STATUS"
+        windowDurationMs: 1000
+        timeoutMs: 1000
+        maxEventsPerTopic: 1
+        windowCloseMode: "TIMEOUT_ONLY"
+        inputs:
+          - topicName: "/state/twins/#"
+            contributionMode: LAST
+        outputTransformers:
+          - type: jsonmapper
+            jsonMapper:
+              operations:
+
+                #
+                # Header
+                #
+
+                - to: header.message_type
+                  defaultValue: "MessageTypeEnum_NODE_STATUS"
+
+                - from: twinId
+                  to: header.source
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - to: header.version
+                  defaultValue: "0.3.0"
+
+                - from: lastSeenAt
+                  to: header.time_sent
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Node identity
+                #
+
+                - from: twinId
+                  to: body.source_of_information
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - from: uuid
+                  to: body.identifier
+                  ignoreMissing: true
+
+                #
+                # Node description
+                #
+
+                - from: callSign
+                  to: body.description.name
+                  ignoreMissing: true
+
+                - from: description
+                  to: body.description.description
+                  ignoreMissing: true
+
+                - to: body.description.version
+                  defaultValue: "10"
+
+                - to: body.description.context_type
+                  defaultValue: "ContextEnum_SIMULATION"
+
+                - to: body.description.standard_identity
+                  defaultValue: "StandardIdentityEnum_FRIEND"
+
+                - to: body.description.symbol_set
+                  defaultValue: "SymbolSetEnum_AIR"
+
+                - to: body.description.status
+                  defaultValue: "EntityStatusEnum_PRESENT"
+
+                - to: body.description.headquarters_task_force_dummy
+                  defaultValue: "HeadquartersTaskForceDummyEnum_NOT_APPLICABLE"
+
+                - to: body.description.unit_echelon_equipment_mobility
+                  defaultValue: "UnitEchelonEquipmentMobilityEnum_UNKNOWN"
+
+                - to: body.description.entity
+                  defaultValue: "11"
+
+                - to: body.description.entity_type
+                  defaultValue: "04"
+
+                - to: body.description.entity_subtype
+                  defaultValue: "00"
+
+                - to: body.description.sector_1
+                  defaultValue: "00"
+
+                - to: body.description.sector_2
+                  defaultValue: "00"
+
+                - to: body.description.organization
+                  defaultValue: "NATO"
+
+                - to: body.description.nationality
+                  defaultValue: "Estonia"
+
+                #
+                # Node times
+                #
+
+                - from: operationalUpdatedAt
+                  to: body.timestamp
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: createdAt
+                  to: body.time_of_initiation
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: lastSeenAt
+                  to: body.time_of_validity
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Position
+                #
+
+                - from: geoPosition.latitude
+                  to: body.pose.position.latitude_longitude_altitude.latitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.longitude
+                  to: body.pose.position.latitude_longitude_altitude.longitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.altitudeMslMeters
+                  to: body.pose.position.latitude_longitude_altitude.altitude.value[0].value
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - to: body.pose.position.latitude_longitude_altitude.altitude.value[0].type
+                  defaultValue: "AltitudeTypeEnum_WGS"
+
+                #
+                # Orientation
+                #
+
+                - from: orientation.rollDegrees
+                  to: body.pose.orientation.euler_angles.roll
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.pitchDegrees
+                  to: body.pose.orientation.euler_angles.pitch
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.yawDegrees
+                  to: body.pose.orientation.euler_angles.yaw
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                #
+                # Velocity
+                #
+
+                - from: groundSpeedMetersPerSecond
+                  to: body.velocity.speed_course_climb_rate.speed
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: headingDegrees
+                  to: body.velocity.speed_course_climb_rate.course
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: verticalSpeedMetersPerSecond
+                  to: body.velocity.speed_course_climb_rate.climb_rate
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+          - type: jsontoschema
+            messageName: "catl.hibw.messages.node.NodeStatus"
+            format: "protobuf"
+      
+      #
+      # JSON format
+      #
+
+      - name: DRONE-TWIN-CATL-DYNAMIC-UPDATE-TO-JSON
+        enabled: true
+        outputTopic: "4817/maps/json/home/MessageTypeEnum_DYNAMIC_UPDATE"
+        windowDurationMs: 1000
+        timeoutMs: 1000
+        maxEventsPerTopic: 1
+        windowCloseMode: "TIMEOUT_ONLY"
+        inputs:
+          - topicName: "/state/twins/#"
+            contributionMode: LAST
+        outputTransformers:
+          - type: jsonmapper
+            jsonMapper:
+              operations:
+
+                #
+                # Header
+                #
+
+                - to: header.message_type
+                  defaultValue: "MessageTypeEnum_DYNAMIC_UPDATE"
+
+                - from: twinId
+                  to: header.source
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - to: header.version
+                  defaultValue: "0.3.0"
+
+                - from: lastSeenAt
+                  to: header.time_sent
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Track identity
+                #
+
+                - from: uuid
+                  to: body.operation.put_value.track.identifier
+                  ignoreMissing: true
+
+                - from: twinId
+                  to: body.operation.put_value.track.source_of_information
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - from: callSign
+                  to: body.operation.put_value.track.description.name
+                  ignoreMissing: true
+
+                - from: description
+                  to: body.operation.put_value.track.description.description
+                  ignoreMissing: true
+
+                #
+                # Track description
+                #
+
+                - to: body.operation.put_value.track.description.version
+                  defaultValue: "10"
+
+                - to: body.operation.put_value.track.description.context_type
+                  defaultValue: "ContextEnum_SIMULATION"
+
+                - to: body.operation.put_value.track.description.standard_identity
+                  defaultValue: "StandardIdentityEnum_FRIEND"
+
+                - to: body.operation.put_value.track.description.symbol_set
+                  defaultValue: "SymbolSetEnum_AIR"
+
+                - to: body.operation.put_value.track.description.status
+                  defaultValue: "EntityStatusEnum_PRESENT"
+
+                - to: body.operation.put_value.track.description.headquarters_task_force_dummy
+                  defaultValue: "HeadquartersTaskForceDummyEnum_NOT_APPLICABLE"
+
+                - to: body.operation.put_value.track.description.unit_echelon_equipment_mobility
+                  defaultValue: "UnitEchelonEquipmentMobilityEnum_UNKNOWN"
+
+                - to: body.operation.put_value.track.description.entity
+                  defaultValue: "11"
+
+                - to: body.operation.put_value.track.description.entity_type
+                  defaultValue: "04"
+
+                - to: body.operation.put_value.track.description.entity_subtype
+                  defaultValue: "00"
+
+                - to: body.operation.put_value.track.description.sector_1
+                  defaultValue: "00"
+
+                - to: body.operation.put_value.track.description.sector_2
+                  defaultValue: "00"
+
+                #
+                # Track times
+                #
+
+                - from: operationalUpdatedAt
+                  to: body.operation.put_value.track.timestamp
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: createdAt
+                  to: body.operation.put_value.track.time_of_initiation
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: lastSeenAt
+                  to: body.operation.put_value.track.time_of_validity
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Position
+                #
+
+                - from: geoPosition.latitude
+                  to: body.operation.put_value.track.pose.position.latitude_longitude_altitude.latitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.longitude
+                  to: body.operation.put_value.track.pose.position.latitude_longitude_altitude.longitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.altitudeMslMeters
+                  to: body.operation.put_value.track.pose.position.latitude_longitude_altitude.altitude.value[0].value
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - to: body.operation.put_value.track.pose.position.latitude_longitude_altitude.altitude.value[0].type
+                  defaultValue: "AltitudeTypeEnum_WGS"
+
+                #
+                # Orientation
+                #
+
+                - from: orientation.rollDegrees
+                  to: body.operation.put_value.track.pose.orientation.euler_angles.roll
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.pitchDegrees
+                  to: body.operation.put_value.track.pose.orientation.euler_angles.pitch
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.yawDegrees
+                  to: body.operation.put_value.track.pose.orientation.euler_angles.yaw
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                #
+                # Velocity
+                #
+
+                - from: groundSpeedMetersPerSecond
+                  to: body.operation.put_value.track.velocity.speed_course_climb_rate.speed
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: headingDegrees
+                  to: body.operation.put_value.track.velocity.speed_course_climb_rate.course
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: verticalSpeedMetersPerSecond
+                  to: body.operation.put_value.track.velocity.speed_course_climb_rate.climb_rate
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                #
+                # Track state
+                #
+
+                - to: body.operation.put_value.track.track_phase
+                  defaultValue: "TrackPhase_TRACKED"
+
+                - to: body.operation.put_value.track.description.organization
+                  defaultValue: "NATO"
+
+                - to: body.operation.put_value.track.description.nationality
+                  defaultValue: "Estonia"
+
+      - name: DRONE-TWIN-CATL-NODE-DESCRIPTION-TO-JSON
+        enabled: true
+        outputTopic: "4817/maps/json/home/MessageTypeEnum_NODE_DESCRIPTION"
+        windowDurationMs: 1000
+        timeoutMs: 60000
+        maxEventsPerTopic: 1
+        windowCloseMode: "TIMEOUT_ONLY"
+        emitFirstEventImmediately: true
+        inputs:
+          - topicName: "/state/twins/#"
+            contributionMode: LAST
+        outputTransformers:
+          - type: jsonmapper
+            jsonMapper:
+              operations:
+                #
+                # Header
+                #
+
+                - to: header.message_type
+                  defaultValue: "MessageTypeEnum_NODE_DESCRIPTION"
+
+                - from: twinId
+                  to: header.source
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - to: header.version
+                  defaultValue: "0.3.0"
+
+                - from: lastSeenAt
+                  to: header.time_sent
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Node body identity
+                #
+
+                - from: twinId
+                  to: body.source_of_information
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - from: uuid
+                  to: body.identifier
+                  ignoreMissing: true
+
+                - from: callSign
+                  to: body.description.name
+                  ignoreMissing: true
+
+                - from: description
+                  to: body.description.description
+                  ignoreMissing: true
+
+                #
+                # Description constants
+                #
+
+                - to: body.description.version
+                  defaultValue: "10"
+
+                - to: body.description.context_type
+                  defaultValue: "ContextEnum_SIMULATION"
+
+                - to: body.description.standard_identity
+                  defaultValue: "StandardIdentityEnum_FRIEND"
+
+                - to: body.description.symbol_set
+                  defaultValue: "SymbolSetEnum_AIR"
+
+                - to: body.description.status
+                  defaultValue: "EntityStatusEnum_PRESENT"
+
+                - to: body.description.headquarters_task_force_dummy
+                  defaultValue: "HeadquartersTaskForceDummyEnum_NOT_APPLICABLE"
+
+                - to: body.description.unit_echelon_equipment_mobility
+                  defaultValue: "UnitEchelonEquipmentMobilityEnum_UNKNOWN"
+
+                - to: body.description.entity
+                  defaultValue: "11"
+
+                - to: body.description.entity_type
+                  defaultValue: "04"
+
+                - to: body.description.entity_subtype
+                  defaultValue: "00"
+
+                - to: body.description.sector_1
+                  defaultValue: "00"
+
+                - to: body.description.sector_2
+                  defaultValue: "00"
+
+                - to: body.description.organization
+                  defaultValue: "NATO"
+
+                - to: body.description.nationality
+                  defaultValue: "Estonia"
+
+                #
+                # Node times
+                #
+
+                - from: operationalUpdatedAt
+                  to: body.timestamp
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: createdAt
+                  to: body.time_of_initiation
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: lastSeenAt
+                  to: body.time_of_validity
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Pose
+                #
+
+                - from: geoPosition.latitude
+                  to: body.pose.position.latitude_longitude_altitude.latitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.longitude
+                  to: body.pose.position.latitude_longitude_altitude.longitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.altitudeMslMeters
+                  to: body.pose.position.latitude_longitude_altitude.altitude.value[0].value
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - to: body.pose.position.latitude_longitude_altitude.altitude.value[0].type
+                  defaultValue: "AltitudeTypeEnum_WGS"
+
+                #
+                # Orientation
+                #
+
+                - from: orientation.rollDegrees
+                  to: body.pose.orientation.euler_angles.roll
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.pitchDegrees
+                  to: body.pose.orientation.euler_angles.pitch
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.yawDegrees
+                  to: body.pose.orientation.euler_angles.yaw
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                #
+                # Velocity
+                #
+
+                - from: groundSpeedMetersPerSecond
+                  to: body.velocity.speed_course_climb_rate.speed
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: headingDegrees
+                  to: body.velocity.speed_course_climb_rate.course
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: verticalSpeedMetersPerSecond
+                  to: body.velocity.speed_course_climb_rate.climb_rate
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+
+      - name: DRONE-TWIN-CATL-NODE-STATUS-TO-JSON
+        enabled: true
+        outputTopic: "4817/maps/json/home/MessageTypeEnum_NODE_STATUS"
+        windowDurationMs: 1000
+        timeoutMs: 1000
+        maxEventsPerTopic: 1
+        windowCloseMode: "TIMEOUT_ONLY"
+        inputs:
+          - topicName: "/state/twins/#"
+            contributionMode: LAST
+        outputTransformers:
+          - type: jsonmapper
+            jsonMapper:
+              operations:
+
+                #
+                # Header
+                #
+
+                - to: header.message_type
+                  defaultValue: "MessageTypeEnum_NODE_STATUS"
+
+                - from: twinId
+                  to: header.source
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - to: header.version
+                  defaultValue: "0.3.0"
+
+                - from: lastSeenAt
+                  to: header.time_sent
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Node identity
+                #
+
+                - from: twinId
+                  to: body.source_of_information
+                  function: BASE64_ENCODE
+                  ignoreMissing: true
+
+                - from: uuid
+                  to: body.identifier
+                  ignoreMissing: true
+
+                #
+                # Node description
+                #
+
+                - from: callSign
+                  to: body.description.name
+                  ignoreMissing: true
+
+                - from: description
+                  to: body.description.description
+                  ignoreMissing: true
+
+                - to: body.description.version
+                  defaultValue: "10"
+
+                - to: body.description.context_type
+                  defaultValue: "ContextEnum_SIMULATION"
+
+                - to: body.description.standard_identity
+                  defaultValue: "StandardIdentityEnum_FRIEND"
+
+                - to: body.description.symbol_set
+                  defaultValue: "SymbolSetEnum_AIR"
+
+                - to: body.description.status
+                  defaultValue: "EntityStatusEnum_PRESENT"
+
+                - to: body.description.headquarters_task_force_dummy
+                  defaultValue: "HeadquartersTaskForceDummyEnum_NOT_APPLICABLE"
+
+                - to: body.description.unit_echelon_equipment_mobility
+                  defaultValue: "UnitEchelonEquipmentMobilityEnum_UNKNOWN"
+
+                - to: body.description.entity
+                  defaultValue: "11"
+
+                - to: body.description.entity_type
+                  defaultValue: "04"
+
+                - to: body.description.entity_subtype
+                  defaultValue: "00"
+
+                - to: body.description.sector_1
+                  defaultValue: "00"
+
+                - to: body.description.sector_2
+                  defaultValue: "00"
+
+                - to: body.description.organization
+                  defaultValue: "NATO"
+
+                - to: body.description.nationality
+                  defaultValue: "Estonia"
+
+                #
+                # Node times
+                #
+
+                - from: operationalUpdatedAt
+                  to: body.timestamp
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: createdAt
+                  to: body.time_of_initiation
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                - from: lastSeenAt
+                  to: body.time_of_validity
+                  function: DATE_TO_EPOCH_SECONDS
+                  ignoreMissing: true
+
+                #
+                # Position
+                #
+
+                - from: geoPosition.latitude
+                  to: body.pose.position.latitude_longitude_altitude.latitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.longitude
+                  to: body.pose.position.latitude_longitude_altitude.longitude
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: geoPosition.altitudeMslMeters
+                  to: body.pose.position.latitude_longitude_altitude.altitude.value[0].value
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - to: body.pose.position.latitude_longitude_altitude.altitude.value[0].type
+                  defaultValue: "AltitudeTypeEnum_WGS"
+
+                #
+                # Orientation
+                #
+
+                - from: orientation.rollDegrees
+                  to: body.pose.orientation.euler_angles.roll
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.pitchDegrees
+                  to: body.pose.orientation.euler_angles.pitch
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: orientation.yawDegrees
+                  to: body.pose.orientation.euler_angles.yaw
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                #
+                # Velocity
+                #
+
+                - from: groundSpeedMetersPerSecond
+                  to: body.velocity.speed_course_climb_rate.speed
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: headingDegrees
+                  to: body.velocity.speed_course_climb_rate.course
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+                - from: verticalSpeedMetersPerSecond
+                  to: body.velocity.speed_course_climb_rate.climb_rate
+                  function: TO_DOUBLE
+                  ignoreMissing: true
+
+
+

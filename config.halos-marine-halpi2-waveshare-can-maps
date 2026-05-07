@@ -1,0 +1,53 @@
+# pi-gen config for the "Waveshare CAN + MAPS" variant.
+#
+# Builds a headless HALPI2 marine image that enables CH0 of the
+# Waveshare 2-Channel Isolated CAN HAT as can1, on top of the HALPI2
+# onboard CAN (can0). CH1 is intentionally not enabled — its default
+# chip-select pin (GPIO 7) conflicts with the HALPI2 SPI0 CS remap.
+#
+# This variant also installs MAPS with HALPI2-specific configuration:
+#
+#   can0 -> Signal K / NMEA 2000
+#   can1 -> MAPS direct CAN interface
+#
+# MAPS runtime data is stored under:
+#
+#   /opt/maps_data
+
+# === Image identity ===
+
+IMG_NAME="Halos-Marine-HALPI2-WaveshareCAN-MAPS"
+PI_GEN_RELEASE="HaLOS Marine HALPI2 Waveshare CAN MAPS"
+PI_GEN_REPO="https://github.com/halos-org/halos-pi-gen-template"
+
+# === Build infrastructure ===
+
+IMG_DATE=$(cat VERSION)
+IMG_FILENAME="${IMG_NAME}_${IMG_DATE}"
+ARCHIVE_FILENAME="${IMG_NAME}_${IMG_DATE}"
+CONTAINER_NAME="pigen_work_halos-marine-halpi2-waveshare-can-maps"
+
+DEPLOY_COMPRESSION="xz"
+COMPRESSION_LEVEL=6
+
+# === Stage list ===
+
+# Mirrors halos-pi-gen's config.halos-marine-halpi2 STAGE_LIST, with
+# stage-custom-waveshare-can and stage-custom-waveshare-can-maps inserted before
+# stage-export.
+STAGE_LIST="stage0 stage1 stage2 stage-common stage-halos-base stage-halpi2-common stage-halos-halpi2 stage-halos-headless stage-halos-marine stage-halpi2-marine stage-custom-waveshare-can stage-custom-waveshare-can-maps stage-export"
+
+# === User defaults (first boot) ===
+
+FIRST_USER_NAME="pi"
+FIRST_USER_PASS="halos"
+DISABLE_FIRST_BOOT_USER_RENAME="1"
+TARGET_HOSTNAME="halos"
+
+# === Localization ===
+
+WPA_COUNTRY="GB"
+
+# === Services ===
+
+ENABLE_SSH=1
