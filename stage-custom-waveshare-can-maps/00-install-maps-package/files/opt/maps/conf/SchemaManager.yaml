@@ -5,7 +5,7 @@ SchemaManager:
   config:
     directoryPath: "{{MAPS_DATA}}/schemas"
 
-  protocPath: "D:/protobuf/bin/protoc.exe"
+  protocPath: "/usr/bin/protoc"
   importLocations:
     - path: "/opt/schema/aep105/mibw/proto"
       format: "protobuf"
