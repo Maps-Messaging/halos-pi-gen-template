@@ -1,0 +1,69 @@
+---
+DestinationManager:
+   data:
+      -
+         name: root
+         directory: "{{MAPS_DATA}}/destinations"
+         namespace: /
+         type: Partition
+         sync: disable
+         itemCount: 1000
+         maxPartitionSize: 1G
+         expiredEventPoll: 20
+         autoPauseTimeout: 600
+         format:
+            name: json
+         cache:
+            type: WeakReference
+            writeThrough: enable
+         archive:
+            name: None
+
+
+      -
+         name: mavlink
+         directory: "{{MAPS_DATA}}/mavlink"
+         namespace: /mavlink
+         type: Memory
+         sync: disable
+         itemCount: 100
+         maxPartitionSize: 1G
+         expiredEventPoll: 20
+         autoPauseTimeout: 600
+         format:
+            name: json
+      -
+         name: state
+         directory: "{{MAPS_DATA}}/state"
+         namespace: /state
+         type: Memory
+         itemCount: 100
+         maxPartitionSize: 1G
+         expiredEventPoll: 20
+         autoPauseTimeout: 600
+         format:
+            name: json
+
+
+      -
+         name: tak
+         directory: "{{MAPS_DATA}}/tak"
+         namespace: /tak
+         type: Memory
+         itemCount: 100
+         maxPartitionSize: 1G
+         expiredEventPoll: 20
+         autoPauseTimeout: 600
+         format:
+            name: xml
+      -
+         name: stanag_4817
+         directory: "{{MAPS_DATA}}/stanag_4817"
+         namespace: "4817"
+         type: Memory
+         itemCount: 100
+         maxPartitionSize: 1G
+         expiredEventPoll: 20
+         autoPauseTimeout: 600
+         format:
+            name: json
