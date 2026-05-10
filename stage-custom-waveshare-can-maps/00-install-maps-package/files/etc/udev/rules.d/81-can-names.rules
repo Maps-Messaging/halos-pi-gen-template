@@ -1,0 +1,2 @@
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="spi0.0", NAME="can0"
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="spi0.1", NAME="can1"

@@ -9,6 +9,10 @@ install -d "${ROOTFS_DIR}/etc/systemd/system/maps.service.d"
 install -d "${ROOTFS_DIR}/opt/maps/conf"
 install -d "${ROOTFS_DIR}/opt/maps_data"
 install -d "${ROOTFS_DIR}/var/log/maps"
+install -d "${ROOTFS_DIR}/etc/udev/rules.d"
+
+install -m 0644 files/81-can-names.rules "${ROOTFS_DIR}/etc/udev/rules.d/81-can-names.rules"
+
 
 on_chroot << EOF
 set -e
@@ -51,5 +55,42 @@ fi
 
 chmod 0755 "${ROOTFS_DIR}/opt/maps_data"
 chmod 0755 "${ROOTFS_DIR}/var/log/maps"
+
+CONFIG_FILE="${ROOTFS_DIR}/boot/firmware/config.txt"
+
+if [ ! -f "${CONFIG_FILE}" ]; then
+  echo "ERROR: ${CONFIG_FILE} not found"
+  exit 1
+fi
+
+sed -i \
+  -e '/^# Waveshare 2-Channel Isolated CAN HAT — CH0 only\.$/,/^# land without moving to SPI1 with a custom overlay\.$/d' \
+  -e '/^dtoverlay=spi0-2cs,cs1_pin=6$/d' \
+  -e '/^dtoverlay=mcp251xfd,spi0-1,interrupt=26,oscillator=40000000$/d' \
+  -e '/^dtoverlay=spi0-2cs$/d' \
+  -e '/^dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25$/d' \
+  -e '/^dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=24$/d' \
+  "${CONFIG_FILE}"
+
+cat >> "${CONFIG_FILE}" <<'EOF'
+
+# MAPS HALOS CAN profile
+# Uses Waveshare 2-Channel Isolated CAN HAT only.
+# Onboard HALPI2 CAN is intentionally disabled.
+
+[all]
+
+# Enable SPI for the Waveshare CAN HAT.
+dtparam=spi=on
+
+# SPI0 with two standard chip-selects:
+# CH0 -> SPI0 CS0 / GPIO 8
+# CH1 -> SPI0 CS1 / GPIO 7
+dtoverlay=spi0-2cs
+
+# Waveshare 2-Channel Isolated CAN HAT
+dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25
+dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=24
+EOF
 
 echo "MAPS package and HALPI2 configuration installed"
