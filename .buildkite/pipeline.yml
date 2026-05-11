@@ -1,0 +1,81 @@
+steps:
+  - label: ":raspberry-pi: Build HALOS Marine Pi image"
+    key: "build-halos-image"
+    agents:
+      queue: "halos-maps-image-builder"
+
+    env:
+      IMAGE_BASENAME: "Halos-Marine-HALPI2-WaveshareCAN-MAPS_2026-04-16.0"
+      NEXUS_REPOSITORY_URL: "https://repository.mapsmessaging.io/repository/maps-os-images"
+      NEXUS_UPLOAD_PATH: "pi/halos-maps/2026-05-08"
+
+    command: |
+      set -euo pipefail
+
+      echo "--- Preparing sibling HALOS pi-gen repository"
+
+      TEMPLATE_DIR="$(pwd)"
+      WORKSPACE_DIR="$(dirname "${TEMPLATE_DIR}")"
+
+      cd "${WORKSPACE_DIR}"
+
+      rm -rf halos-pi-gen
+
+      git clone https://github.com/halos-org/halos-pi-gen.git
+
+      cd "${TEMPLATE_DIR}"
+
+      echo "--- Building HALOS image"
+      sudo ./run build config.halos-marine-halpi2-waveshare-can-maps
+
+      echo "--- Locating deploy directory"
+      DEPLOY_DIR="./pi-gen/deploy"
+
+      if [ ! -d "${DEPLOY_DIR}" ]; then
+        echo "Deploy directory not found: ${DEPLOY_DIR}"
+        exit 1
+      fi
+
+      cd "${DEPLOY_DIR}"
+
+      IMAGE_FILE="${IMAGE_BASENAME}.img.xz"
+      INFO_FILE="${IMAGE_BASENAME}.info"
+      SHA256_FILE="${IMAGE_BASENAME}.sha256"
+      MD5_FILE="${IMAGE_BASENAME}.md5"
+
+      echo "--- Validating expected files"
+
+      if [ ! -f "${IMAGE_FILE}" ]; then
+        echo "Missing image file: ${IMAGE_FILE}"
+        ls -lah
+        exit 1
+      fi
+
+      if [ ! -f "${INFO_FILE}" ]; then
+        echo "Missing info file: ${INFO_FILE}"
+        ls -lah
+        exit 1
+      fi
+
+      echo "--- Creating checksums"
+      sha256sum "${IMAGE_FILE}" > "${SHA256_FILE}"
+      md5sum "${IMAGE_FILE}" > "${MD5_FILE}"
+
+      echo "--- Files ready for upload"
+      ls -lah "${IMAGE_FILE}" "${INFO_FILE}" "${SHA256_FILE}" "${MD5_FILE}"
+
+      echo "--- Uploading files to Nexus"
+
+      for FILE in "${IMAGE_FILE}" "${INFO_FILE}" "${SHA256_FILE}" "${MD5_FILE}"; do
+        echo "Uploading ${FILE}"
+
+        curl \
+          -u "admin:${PASSWORD}" \
+          --fail \
+          --show-error \
+          --progress-bar \
+          --upload-file "${FILE}" \
+          "${NEXUS_REPOSITORY_URL}/${NEXUS_UPLOAD_PATH}/${FILE}"
+      done
+
+      echo "--- Upload complete"
