@@ -41,7 +41,7 @@ steps:
       chmod +x stage-custom-waveshare-can-maps/00-install-maps-package/00-run.sh
 
       echo "--- Building HALOS image"
-      sudo ./run build config.halos-marine-halpi2-waveshare-can-maps
+      ./run build config.halos-marine-halpi2-waveshare-can-maps
 
       echo "--- Locating deploy directory"
       DEPLOY_DIR="./pi-gen/deploy"
