@@ -12,11 +12,11 @@ steps:
     command: |
       set -euo pipefail
 
-      NEXUS_USER="$(buildkite-agent secret get NEXUS_USER)"
-      NEXUS_PASSWORD="$(buildkite-agent secret get NEXUS_PASSWORD)"
+      export NEXUS_USER="$(buildkite-agent secret get NEXUS_USER)"
+      export NEXUS_PASSWORD="$(buildkite-agent secret get NEXUS_PASSWORD)"
 
-      : "${NEXUS_USER:?NEXUS_USER secret is required}"
-      : "${NEXUS_PASSWORD:?NEXUS_PASSWORD secret is required}"
+      : "$${NEXUS_USER:?NEXUS_USER secret is required}"
+      : "$${NEXUS_PASSWORD:?NEXUS_PASSWORD secret is required}"
 
       echo "--- Preparing sibling HALOS pi-gen repository"
 
