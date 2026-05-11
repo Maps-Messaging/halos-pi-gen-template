@@ -12,33 +12,33 @@ steps:
     command: |
       set -euo pipefail
 
-      NEXUS_USER="$(buildkite-agent secret get NEXUS_USER)"
-      NEXUS_PASSWORD="$(buildkite-agent secret get NEXUS_PASSWORD)"
+      NEXUS_USER="$$(buildkite-agent secret get NEXUS_USER)"
+      NEXUS_PASSWORD="$$(buildkite-agent secret get NEXUS_PASSWORD)"
 
-      if [ -z "${NEXUS_USER}" ]; then
+      if [ -z "$$NEXUS_USER" ]; then
         echo "NEXUS_USER secret is required"
         exit 1
       fi
 
-      if [ -z "${NEXUS_PASSWORD}" ]; then
+      if [ -z "$$NEXUS_PASSWORD" ]; then
         echo "NEXUS_PASSWORD secret is required"
         exit 1
       fi
 
       echo "--- Preparing sibling HALOS pi-gen repository"
 
-      TEMPLATE_DIR="$(pwd)"
-      WORKSPACE_DIR="$(dirname "${TEMPLATE_DIR}")"
+      TEMPLATE_DIR="$$(pwd)"
+      WORKSPACE_DIR="$$(dirname "$$TEMPLATE_DIR")"
 
-      echo "Template dir: ${TEMPLATE_DIR}"
-      echo "Workspace dir: ${WORKSPACE_DIR}"
+      echo "Template dir: $$TEMPLATE_DIR"
+      echo "Workspace dir: $$WORKSPACE_DIR"
 
-      cd "${WORKSPACE_DIR}"
+      cd "$$WORKSPACE_DIR"
 
       rm -rf halos-pi-gen
       git clone https://github.com/halos-org/halos-pi-gen.git halos-pi-gen
 
-      cd "${TEMPLATE_DIR}"
+      cd "$$TEMPLATE_DIR"
 
       echo "--- Cleaning previous pi-gen build state"
 
@@ -67,53 +67,53 @@ steps:
 
       DEPLOY_DIR="./pi-gen/deploy"
 
-      if [ ! -d "${DEPLOY_DIR}" ]; then
-        echo "Deploy directory not found: ${DEPLOY_DIR}"
+      if [ ! -d "$$DEPLOY_DIR" ]; then
+        echo "Deploy directory not found: $$DEPLOY_DIR"
         exit 1
       fi
 
-      cd "${DEPLOY_DIR}"
+      cd "$$DEPLOY_DIR"
 
-      IMAGE_FILE="${IMAGE_BASENAME}.img.xz"
-      INFO_FILE="${IMAGE_BASENAME}.info"
-      SHA256_FILE="${IMAGE_BASENAME}.sha256"
-      MD5_FILE="${IMAGE_BASENAME}.md5"
+      IMAGE_FILE="$${IMAGE_BASENAME}.img.xz"
+      INFO_FILE="$${IMAGE_BASENAME}.info"
+      SHA256_FILE="$${IMAGE_BASENAME}.sha256"
+      MD5_FILE="$${IMAGE_BASENAME}.md5"
 
       echo "--- Validating expected files"
 
-      if [ ! -f "${IMAGE_FILE}" ]; then
-        echo "Missing image file: ${IMAGE_FILE}"
+      if [ ! -f "$$IMAGE_FILE" ]; then
+        echo "Missing image file: $$IMAGE_FILE"
         ls -lah
         exit 1
       fi
 
-      if [ ! -f "${INFO_FILE}" ]; then
-        echo "Missing info file: ${INFO_FILE}"
+      if [ ! -f "$$INFO_FILE" ]; then
+        echo "Missing info file: $$INFO_FILE"
         ls -lah
         exit 1
       fi
 
       echo "--- Creating checksums"
 
-      sha256sum "${IMAGE_FILE}" > "${SHA256_FILE}"
-      md5sum "${IMAGE_FILE}" > "${MD5_FILE}"
+      sha256sum "$$IMAGE_FILE" > "$$SHA256_FILE"
+      md5sum "$$IMAGE_FILE" > "$$MD5_FILE"
 
       echo "--- Files ready for upload"
 
-      ls -lah "${IMAGE_FILE}" "${INFO_FILE}" "${SHA256_FILE}" "${MD5_FILE}"
+      ls -lah "$$IMAGE_FILE" "$$INFO_FILE" "$$SHA256_FILE" "$$MD5_FILE"
 
       echo "--- Uploading files to Nexus"
 
-      for FILE in "${IMAGE_FILE}" "${INFO_FILE}" "${SHA256_FILE}" "${MD5_FILE}"; do
-        echo "Uploading ${FILE}"
+      for FILE in "$$IMAGE_FILE" "$$INFO_FILE" "$$SHA256_FILE" "$$MD5_FILE"; do
+        echo "Uploading $$FILE"
 
         curl \
-          -u "${NEXUS_USER}:${NEXUS_PASSWORD}" \
+          -u "$$NEXUS_USER:$$NEXUS_PASSWORD" \
           --fail \
           --show-error \
           --progress-bar \
-          --upload-file "${FILE}" \
-          "${NEXUS_REPOSITORY_URL}/${NEXUS_UPLOAD_PATH}/${FILE}"
+          --upload-file "$$FILE" \
+          "$$NEXUS_REPOSITORY_URL/$$NEXUS_UPLOAD_PATH/$$FILE"
       done
 
       echo "--- Upload complete"
