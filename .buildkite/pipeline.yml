@@ -9,15 +9,14 @@ steps:
       NEXUS_REPOSITORY_URL: "https://repository.mapsmessaging.io/repository/maps-os-images"
       NEXUS_UPLOAD_PATH: "pi/halos-maps/2026-05-08"
 
-    secrets:
-      - NEXUS_USER
-      - NEXUS_PASSWORD
-
     command: |
       set -euo pipefail
 
-      : "${NEXUS_USER:?NEXUS_USER environment variable is required}"
-      : "${NEXUS_PASSWORD:?NEXUS_PASSWORD environment variable is required}"
+      NEXUS_USER="$(buildkite-agent secret get NEXUS_USER)"
+      NEXUS_PASSWORD="$(buildkite-agent secret get NEXUS_PASSWORD)"
+
+      : "${NEXUS_USER:?NEXUS_USER secret is required}"
+      : "${NEXUS_PASSWORD:?NEXUS_PASSWORD secret is required}"
 
       echo "--- Preparing sibling HALOS pi-gen repository"
 
@@ -31,9 +30,14 @@ steps:
 
       cd "${TEMPLATE_DIR}"
 
+      echo "--- Cleaning previous pi-gen build state"
+      rm -rf pi-gen/
+      docker rm -v pigen_work_halos-marine-halpi2-waveshare-can-maps || true
+
       echo "--- Verifying custom stage script permissions"
       git ls-files -s stage-custom-waveshare-can-maps/00-install-maps-package/00-run.sh || true
       ls -l stage-custom-waveshare-can-maps/00-install-maps-package/00-run.sh
+      chmod +x stage-custom-waveshare-can-maps/prerun.sh
       chmod +x stage-custom-waveshare-can-maps/00-install-maps-package/00-run.sh
 
       echo "--- Building HALOS image"
