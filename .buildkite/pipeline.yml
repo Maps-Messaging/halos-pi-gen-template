@@ -12,38 +12,59 @@ steps:
     command: |
       set -euo pipefail
 
-      export NEXUS_USER="$(buildkite-agent secret get NEXUS_USER)"
-      export NEXUS_PASSWORD="$(buildkite-agent secret get NEXUS_PASSWORD)"
+      NEXUS_USER="$(buildkite-agent secret get NEXUS_USER)"
+      NEXUS_PASSWORD="$(buildkite-agent secret get NEXUS_PASSWORD)"
 
-      : "$${NEXUS_USER:?NEXUS_USER secret is required}"
-      : "$${NEXUS_PASSWORD:?NEXUS_PASSWORD secret is required}"
+      if [ -z "${NEXUS_USER}" ]; then
+        echo "NEXUS_USER secret is required"
+        exit 1
+      fi
+
+      if [ -z "${NEXUS_PASSWORD}" ]; then
+        echo "NEXUS_PASSWORD secret is required"
+        exit 1
+      fi
 
       echo "--- Preparing sibling HALOS pi-gen repository"
 
       TEMPLATE_DIR="$(pwd)"
       WORKSPACE_DIR="$(dirname "${TEMPLATE_DIR}")"
 
+      echo "Template dir: ${TEMPLATE_DIR}"
+      echo "Workspace dir: ${WORKSPACE_DIR}"
+
       cd "${WORKSPACE_DIR}"
 
       rm -rf halos-pi-gen
-      git clone https://github.com/halos-org/halos-pi-gen.git
+      git clone https://github.com/halos-org/halos-pi-gen.git halos-pi-gen
 
       cd "${TEMPLATE_DIR}"
 
       echo "--- Cleaning previous pi-gen build state"
-      rm -rf pi-gen/
+
+      rm -rf pi-gen
       docker rm -v pigen_work_halos-marine-halpi2-waveshare-can-maps || true
 
       echo "--- Verifying custom stage script permissions"
+
+      git ls-files -s stage-custom-waveshare-can/prerun.sh || true
+      git ls-files -s stage-custom-waveshare-can-maps/prerun.sh || true
       git ls-files -s stage-custom-waveshare-can-maps/00-install-maps-package/00-run.sh || true
+
+      ls -l stage-custom-waveshare-can/prerun.sh
+      ls -l stage-custom-waveshare-can-maps/prerun.sh
       ls -l stage-custom-waveshare-can-maps/00-install-maps-package/00-run.sh
+
+      chmod +x stage-custom-waveshare-can/prerun.sh
       chmod +x stage-custom-waveshare-can-maps/prerun.sh
       chmod +x stage-custom-waveshare-can-maps/00-install-maps-package/00-run.sh
 
       echo "--- Building HALOS image"
+
       ./run build config.halos-marine-halpi2-waveshare-can-maps
 
       echo "--- Locating deploy directory"
+
       DEPLOY_DIR="./pi-gen/deploy"
 
       if [ ! -d "${DEPLOY_DIR}" ]; then
@@ -73,10 +94,12 @@ steps:
       fi
 
       echo "--- Creating checksums"
+
       sha256sum "${IMAGE_FILE}" > "${SHA256_FILE}"
       md5sum "${IMAGE_FILE}" > "${MD5_FILE}"
 
       echo "--- Files ready for upload"
+
       ls -lah "${IMAGE_FILE}" "${INFO_FILE}" "${SHA256_FILE}" "${MD5_FILE}"
 
       echo "--- Uploading files to Nexus"
