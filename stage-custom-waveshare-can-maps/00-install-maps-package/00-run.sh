@@ -11,8 +11,7 @@ install -d "${ROOTFS_DIR}/opt/maps_data"
 install -d "${ROOTFS_DIR}/var/log/maps"
 install -d "${ROOTFS_DIR}/etc/udev/rules.d"
 
-install -m 0644 files/81-can-names.rules "${ROOTFS_DIR}/etc/udev/rules.d/81-can-names.rules"
-
+install -m 0644 files/etc/udev/rules.d/81-can-names.rules "${ROOTFS_DIR}/etc/udev/rules.d/81-can-names.rules"
 
 on_chroot << EOF
 set -e
