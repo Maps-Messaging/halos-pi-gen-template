@@ -5,9 +5,9 @@ steps:
       queue: "halos-maps-image-builder"
 
     env:
-      IMAGE_BASENAME: "Halos-Marine-HALPI2-WaveshareCAN-MAPS_2026-04-16.0"
+      IMAGE_BASENAME: "Halos-Marine-HALPI2-WaveshareCAN-MAPS_2026-05-12.0"
       NEXUS_REPOSITORY_URL: "https://repository.mapsmessaging.io/repository/maps-os-images"
-      NEXUS_UPLOAD_PATH: "pi/halos-maps/2026-05-08"
+      NEXUS_UPLOAD_PATH: "pi/halos-maps/2026-05-12"
 
     command: |
       set -euo pipefail
