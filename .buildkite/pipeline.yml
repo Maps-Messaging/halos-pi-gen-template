@@ -5,9 +5,9 @@ steps:
       queue: "halos-maps-image-builder"
 
     env:
-      IMAGE_BASENAME: "Halos-Marine-HALPI2-WaveshareCAN-MAPS_2026-05-12.0"
+      IMAGE_PREFIX: "Halos-Marine-HALPI2-WaveshareCAN-MAPS"
       NEXUS_REPOSITORY_URL: "https://repository.mapsmessaging.io/repository/maps-os-images"
-      NEXUS_UPLOAD_PATH: "pi/halos-maps/2026-05-12"
+      NEXUS_UPLOAD_BASE_PATH: "pi/halos-maps"
 
     command: |
       set -euo pipefail
@@ -74,12 +74,40 @@ steps:
 
       cd "$$DEPLOY_DIR"
 
-      IMAGE_FILE="$${IMAGE_BASENAME}.img.xz"
+      echo "--- Locating generated image"
+
+      shopt -s nullglob
+
+      IMAGE_FILES=( "$${IMAGE_PREFIX}"_*.img.xz )
+
+      if [ "$${#IMAGE_FILES[@]}" -eq 0 ]; then
+        echo "No generated image found matching: $${IMAGE_PREFIX}_*.img.xz"
+        ls -lah
+        exit 1
+      fi
+
+      if [ "$${#IMAGE_FILES[@]}" -gt 1 ]; then
+        echo "More than one generated image found. Refusing to guess, because apparently that is how pipelines become haunted."
+        printf '%s\n' "$${IMAGE_FILES[@]}"
+        exit 1
+      fi
+
+      IMAGE_FILE="$${IMAGE_FILES[0]}"
+      IMAGE_BASENAME="$${IMAGE_FILE%.img.xz}"
       INFO_FILE="$${IMAGE_BASENAME}.info"
       SHA256_FILE="$${IMAGE_BASENAME}.sha256"
       MD5_FILE="$${IMAGE_BASENAME}.md5"
 
-      echo "--- Validating expected files"
+      IMAGE_VERSION="$${IMAGE_BASENAME#$${IMAGE_PREFIX}_}"
+      IMAGE_DATE="$${IMAGE_VERSION%%.*}"
+      NEXUS_UPLOAD_PATH="$${NEXUS_UPLOAD_BASE_PATH}/$${IMAGE_DATE}"
+
+      echo "Image file: $$IMAGE_FILE"
+      echo "Image basename: $$IMAGE_BASENAME"
+      echo "Image version: $$IMAGE_VERSION"
+      echo "Nexus upload path: $$NEXUS_UPLOAD_PATH"
+
+      echo "--- Validating generated files"
 
       if [ ! -f "$$IMAGE_FILE" ]; then
         echo "Missing image file: $$IMAGE_FILE"
