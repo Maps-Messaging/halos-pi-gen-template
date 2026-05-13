@@ -68,7 +68,7 @@ sed -i \
   -e '/^dtoverlay=mcp251xfd,spi0-1,interrupt=26,oscillator=40000000$/d' \
   -e '/^dtoverlay=spi0-2cs$/d' \
   -e '/^dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25$/d' \
-  -e '/^dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=24$/d' \
+  -e '/^dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=23$/d' \
   "${CONFIG_FILE}"
 
 cat >> "${CONFIG_FILE}" <<'EOF'
@@ -88,8 +88,8 @@ dtparam=spi=on
 dtoverlay=spi0-2cs
 
 # Waveshare 2-Channel Isolated CAN HAT
-dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25
-dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=24
+dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=25
+dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
 EOF
 
 echo "MAPS package and HALPI2 configuration installed"
