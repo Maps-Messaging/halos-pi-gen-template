@@ -207,3 +207,29 @@ NetworkManager:
         protocol: n2k
         auth: default
         deviceName: can1
+
+        # Canbus Queue Configuration
+        queuedWritesEnabled: true
+        queueDepth: 128
+        bitrateBitsPerSecond: 250000
+        maxBusUsagePercent: 20.0
+        queueFullPolicy: DROP_OLDEST
+        writeFailureBackoffMilliseconds: 100
+        ais:
+          enabled: true
+
+          pgn129039:
+            enabled: true
+            intervalMilliseconds: 5000
+
+          pgn129040:
+            enabled: false
+            intervalMilliseconds: 2000
+
+          pgn129809:
+            enabled: true
+            intervalMilliseconds: 300000
+
+          pgn129810:
+            enabled: true
+            intervalMilliseconds: 300000
