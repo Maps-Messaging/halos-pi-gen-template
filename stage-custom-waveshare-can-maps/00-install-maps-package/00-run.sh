@@ -6,9 +6,6 @@ install -d "${ROOTFS_DIR}/etc/apt/sources.list.d"
 install -d "${ROOTFS_DIR}/etc/apt/trusted.gpg.d"
 install -d "${ROOTFS_DIR}/usr/share/keyrings"
 install -d "${ROOTFS_DIR}/etc/systemd/system/maps.service.d"
-install -d "${ROOTFS_DIR}/opt/maps/conf"
-install -d "${ROOTFS_DIR}/opt/maps_data"
-install -d "${ROOTFS_DIR}/var/log/maps"
 install -d "${ROOTFS_DIR}/etc/udev/rules.d"
 
 install -m 0644 files/etc/udev/rules.d/81-can-names.rules "${ROOTFS_DIR}/etc/udev/rules.d/81-can-names.rules"
@@ -91,5 +88,8 @@ dtoverlay=spi0-2cs
 dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=25
 dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
 EOF
+
+echo "Final MAPS config files:"
+find "${ROOTFS_DIR}/opt/maps/conf" -maxdepth 5 -type f -print | sort
 
 echo "MAPS package and HALPI2 configuration installed"
