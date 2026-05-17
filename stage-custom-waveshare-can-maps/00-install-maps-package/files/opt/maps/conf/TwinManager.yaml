@@ -27,9 +27,11 @@ TwinManager:
 
 
   tak:
-    hostname: "localhost"
+    hostname: "opentak.mapsmessaging.io"
     port: 8088
     topic: "/tak/cot"
+
+
   publish:
     enabled: true
     topicTemplate: "/state/twins/{twinId}"
