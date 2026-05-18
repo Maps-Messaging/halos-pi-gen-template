@@ -36,9 +36,6 @@ EOF
 cp -a files/etc/systemd/system/maps.service.d/override.conf \
   "${ROOTFS_DIR}/etc/systemd/system/maps.service.d/override.conf"
 
-cp -a files/opt/maps/conf/. \
-  "${ROOTFS_DIR}/opt/maps/conf/"
-
 chmod 0644 "${ROOTFS_DIR}/etc/systemd/system/maps.service.d/override.conf"
 
 if [ -f "${ROOTFS_DIR}/etc/maps/maps.env" ]; then
@@ -114,8 +111,5 @@ printf '%s %s\n' \
   > "${CMDLINE_FILE}"
 
 chmod 0644 "${CMDLINE_FILE}"
-
-echo "Final MAPS config files:"
-find "${ROOTFS_DIR}/opt/maps/conf" -maxdepth 5 -type f -print | sort
 
 echo "MAPS package and HALPI2 configuration installed"
