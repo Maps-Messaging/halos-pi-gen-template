@@ -89,6 +89,32 @@ dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=25
 dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
 EOF
 
+
+CMDLINE_FILE="${ROOTFS_DIR}/boot/firmware/cmdline.txt"
+
+if [ ! -f "${CMDLINE_FILE}" ]; then
+  echo "ERROR: ${CMDLINE_FILE} not found"
+  exit 1
+fi
+
+echo "Applying MAPS HALPI2 NVMe kernel command line workaround"
+
+CURRENT_CMDLINE="$(tr '\n' ' ' < "${CMDLINE_FILE}" | sed -e 's/[[:space:]]\+/ /g' -e 's/^ //' -e 's/ $//')"
+
+CURRENT_CMDLINE="$(printf '%s\n' "${CURRENT_CMDLINE}" | sed -E 's/(^| )nvme\.max_host_mem_size_mb=[^ ]+//g')"
+CURRENT_CMDLINE="$(printf '%s\n' "${CURRENT_CMDLINE}" | sed -E 's/(^| )nvme_core\.default_ps_max_latency_us=[^ ]+//g')"
+CURRENT_CMDLINE="$(printf '%s\n' "${CURRENT_CMDLINE}" | sed -E 's/(^| )pcie_aspm=[^ ]+//g')"
+CURRENT_CMDLINE="$(printf '%s\n' "${CURRENT_CMDLINE}" | sed -E 's/(^| )pcie_port_pm=[^ ]+//g')"
+
+CURRENT_CMDLINE="$(printf '%s\n' "${CURRENT_CMDLINE}" | sed -e 's/[[:space:]]\+/ /g' -e 's/^ //' -e 's/ $//')"
+
+printf '%s %s\n' \
+  "${CURRENT_CMDLINE}" \
+  "nvme.max_host_mem_size_mb=0 nvme_core.default_ps_max_latency_us=0 pcie_aspm=off pcie_port_pm=off" \
+  > "${CMDLINE_FILE}"
+
+chmod 0644 "${CMDLINE_FILE}"
+
 echo "Final MAPS config files:"
 find "${ROOTFS_DIR}/opt/maps/conf" -maxdepth 5 -type f -print | sort
 
