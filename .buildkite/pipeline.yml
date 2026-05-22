@@ -6,7 +6,7 @@ steps:
 
     env:
       IMAGE_PREFIX: "Halos-Marine-HALPI2-WaveshareCAN-MAPS"
-      NEXUS_REPOSITORY_URL: "https://repository.mapsmessaging.io/repository/maps-os-images"
+      NEXUS_REPOSITORY_URL: "https://repository.mapsmessaging.io/repository/maps-os-images_releases"
       NEXUS_UPLOAD_BASE_PATH: "pi/halos-maps"
 
     command: |

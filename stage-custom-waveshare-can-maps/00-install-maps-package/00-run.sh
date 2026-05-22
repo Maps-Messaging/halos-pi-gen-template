@@ -22,11 +22,9 @@ curl -fsSL https://repos.azul.com/azul-repo.key \
 echo "deb [arch=arm64,amd64 signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" \
   > /etc/apt/sources.list.d/zulu.list
 
-echo "deb [arch=all] https://repository.mapsmessaging.io/repository/maps_apt_daily/ development main" \
-  > /etc/apt/sources.list.d/mapsmessaging-daily.list
+echo 'deb [arch=all] https://repository.mapsmessaging.io/repository/maps_apt_release/ stable main' | sudo tee /etc/apt/sources.list.d/mapsmessaging-release.list
 
-curl -fsSL https://repository.mapsmessaging.io/repository/public_key/daily/apt_daily_key.gpg \
-  | gpg --dearmor -o /etc/apt/trusted.gpg.d/mapsmessaging-apt.gpg
+sudo curl -fsSL https://repository.mapsmessaging.io/repository/public_key/daily/apt_daily_key.gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/mapsmessaging-apt.gpg
 
 apt-get update
 apt-get install -y maps
