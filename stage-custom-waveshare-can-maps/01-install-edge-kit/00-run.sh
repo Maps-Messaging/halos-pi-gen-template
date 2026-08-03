@@ -3,7 +3,9 @@
 # gettext-base, and the edge-kit from maps-edge-platform at EDGE_KIT_REF. The
 # only enabled unit is maps-edge-firstboot.service, which is condition-gated on
 # /boot/firmware/maps-edge.env: no drop bundle => the image behaves exactly as
-# the previous daily. Activation docs: maps-edge-platform docs/edge-node-onboarding.md.
+# the previous daily. dnsmasq and tailscaled are both explicitly disabled after
+# install (their package postinst scripts auto-enable+start them otherwise).
+# Activation docs: maps-edge-platform docs/edge-node-onboarding.md.
 
 EDGE_KIT_REF="${EDGE_KIT_REF:-main}"
 EDGE_KIT_REPO="Maps-Messaging/maps-edge-platform"
@@ -42,6 +44,11 @@ curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg \
 echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian bookworm main" \
   > /etc/apt/sources.list.d/tailscale.list
 apt-get update && apt-get install -y tailscale
+# tailscaled's postinst enables (and starts) it, same as dnsmasq -- disable
+# it so an image with no drop bundle does not try to reach the tailnet.
+# maps-edge-activate brings it back up before calling `tailscale up`
+# during activation.
+systemctl disable --now tailscaled || true
 # consul ${CONSUL_VERSION} (arm64)
 curl -fsSL "https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_arm64.zip" -o /tmp/consul.zip
 unzip -o /tmp/consul.zip -d /usr/local/bin && chmod 0755 /usr/local/bin/consul && rm /tmp/consul.zip
