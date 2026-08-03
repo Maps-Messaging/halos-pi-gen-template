@@ -68,6 +68,10 @@ jobs:
         if: matrix.enabled != false
         uses: actions/checkout@v4
 
+      - name: Check edge-kit stage
+        if: matrix.enabled != false
+        run: bash scripts/check-edge-kit-stage.sh
+
       - name: Checkout halos-pi-gen
         if: matrix.enabled != false
         uses: actions/checkout@v4
@@ -115,9 +119,20 @@ jobs:
 
       - name: Build image
         if: matrix.enabled != false
+        env:
+          EDGE_KIT_REF: ${{ vars.EDGE_KIT_REF }}
+          EDGE_KIT_TOKEN: ${{ secrets.EDGE_KIT_TOKEN }}
         run: |
           cd pi-gen
-          sudo RELEASE='${{ matrix.release }}' GIT_HASH=${{ github.sha }} IMG_FILENAME=${{ env.IMG_FILENAME }} ARCHIVE_FILENAME=${{ env.IMG_FILENAME }} ./build-docker.sh
+          # EDGE_KIT_REF/EDGE_KIT_TOKEN must reach the container that
+          # build-docker.sh spins up for stage-custom-waveshare-can-maps/
+          # 01-install-edge-kit. build-docker.sh's `docker run` only forwards
+          # GIT_HASH by default, so PIGEN_DOCKER_OPTS adds `-e VAR` (no value)
+          # flags telling docker to pick these up from this shell's env.
+          sudo RELEASE='${{ matrix.release }}' GIT_HASH=${{ github.sha }} IMG_FILENAME=${{ env.IMG_FILENAME }} ARCHIVE_FILENAME=${{ env.IMG_FILENAME }} \
+            EDGE_KIT_REF="${EDGE_KIT_REF:-main}" EDGE_KIT_TOKEN="${EDGE_KIT_TOKEN}" \
+            PIGEN_DOCKER_OPTS="-e EDGE_KIT_REF -e EDGE_KIT_TOKEN" \
+            ./build-docker.sh
 
       - name: Upload image artifact
         if: matrix.enabled != false
