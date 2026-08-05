@@ -23,6 +23,20 @@ jobs:
             config: config.halos-desktop-marine-halpi2-ap-ais
             release: trixie
             enabled: true
+          # The MAPS edge variant: HALPI2 + Waveshare 2-channel CAN HAT, with
+          # can0 -> Signal K / NMEA 2000 and can1 -> MAPS. Its STAGE_LIST is the
+          # only one that pulls stage-custom-waveshare-can-maps, i.e. the only
+          # image that actually contains the MAPS package AND the edge kit.
+          # It was never in this matrix, so despite the stage existing since
+          # 2026-08-03 no MAPS edge image has ever been built -- leaving nothing
+          # to flash onto a HALPI2 for field testing.
+          # Requires the EDGE_KIT_TOKEN secret (the edge kit lives in the
+          # PRIVATE maps-edge-platform repo); without it 01-install-edge-kit
+          # cannot fetch and the build fails there.
+          - name: Halos-Marine-HALPI2-WaveshareCAN-MAPS
+            config: config.halos-marine-halpi2-waveshare-can-maps
+            release: trixie
+            enabled: true
 
     steps:
       - name: Free disk space
