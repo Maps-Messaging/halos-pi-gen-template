@@ -19,8 +19,14 @@ curl -fsSL ${EDGE_KIT_TOKEN:+-H "Authorization: Bearer ${EDGE_KIT_TOKEN}"} \
   "https://api.github.com/repos/${EDGE_KIT_REPO}/tarball/${EDGE_KIT_REF}" \
   | tar -xz -C /tmp/edge-kit-src --strip-components=1
 
+# /usr/local/bin must be created explicitly: a pi-gen rootfs does not have it
+# at this stage, so the symlink below fails with a bare "No such file or
+# directory" that names the LINK rather than the missing parent. This stage had
+# never actually run in CI (its config was not in the build matrix), so the gap
+# survived since the stage was written.
 install -d "${ROOTFS_DIR}/usr/local/lib/maps-edge/units" \
            "${ROOTFS_DIR}/usr/local/lib/maps-edge/templates" \
+           "${ROOTFS_DIR}/usr/local/bin" \
            "${ROOTFS_DIR}/etc/systemd/system"
 cp -a /tmp/edge-kit-src/edge-kit/templates/. "${ROOTFS_DIR}/usr/local/lib/maps-edge/templates/"
 install -m 0755 /tmp/edge-kit-src/edge-kit/maps-edge-activate \
@@ -30,6 +36,16 @@ install -m 0755 /tmp/edge-kit-src/ansible/roles/consul_wan_join/files/maps-consu
 install -m 0644 /tmp/edge-kit-src/edge-kit/units/*.service \
                 /tmp/edge-kit-src/edge-kit/units/*.timer \
   "${ROOTFS_DIR}/etc/systemd/system/"
+# Other edge-kit entry points, installed when present so that merging a new
+# component (e.g. the CAN mirror, or the identity enrol/renew scripts) cannot
+# leave it silently absent from the image while everything still builds green.
+for _bin in maps-edge-can-mirror maps-edge-enroll maps-edge-cert-renew; do
+  if [ -f "/tmp/edge-kit-src/edge-kit/${_bin}" ]; then
+    install -m 0755 "/tmp/edge-kit-src/edge-kit/${_bin}" \
+      "${ROOTFS_DIR}/usr/local/lib/maps-edge/${_bin}"
+    echo "  + ${_bin}"
+  fi
+done
 ln -sf /usr/local/lib/maps-edge/maps-edge-activate "${ROOTFS_DIR}/usr/local/bin/maps-edge-activate"
 
 on_chroot << EOF
