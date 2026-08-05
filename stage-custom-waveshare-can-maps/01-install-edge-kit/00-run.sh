@@ -48,6 +48,12 @@ for _bin in maps-edge-can-mirror maps-edge-enroll maps-edge-cert-renew; do
 done
 ln -sf /usr/local/lib/maps-edge/maps-edge-activate "${ROOTFS_DIR}/usr/local/bin/maps-edge-activate"
 
+# NOTE: the delimiter is deliberately UNQUOTED so ${CONSUL_VERSION} below is
+# expanded by THIS shell before the chroot sees it. That also means every
+# `backtick` and $(...) in here -- INCLUDING INSIDE COMMENTS -- is executed on
+# the HOST. A comment containing `tailscale up` once failed the whole build with
+# "tailscale: command not found". Use 'single quotes' in comments here, never
+# backticks.
 on_chroot << EOF
 set -e
 apt-get update
@@ -62,7 +68,7 @@ echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://
 apt-get update && apt-get install -y tailscale
 # tailscaled's postinst enables (and starts) it, same as dnsmasq -- disable
 # it so an image with no drop bundle does not try to reach the tailnet.
-# maps-edge-activate brings it back up before calling `tailscale up`
+# maps-edge-activate brings it back up before calling 'tailscale up'
 # during activation.
 systemctl disable --now tailscaled || true
 # consul ${CONSUL_VERSION} (arm64)
