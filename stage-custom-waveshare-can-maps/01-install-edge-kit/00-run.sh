@@ -27,11 +27,9 @@ curl -fsSL ${EDGE_KIT_TOKEN:+-H "Authorization: Bearer ${EDGE_KIT_TOKEN}"} \
 install -d "${ROOTFS_DIR}/usr/local/lib/maps-edge/units" \
            "${ROOTFS_DIR}/usr/local/lib/maps-edge/templates" \
            "${ROOTFS_DIR}/usr/local/bin" \
-           "${ROOTFS_DIR}/usr/local/lib/maps-edge/maps-logger" \
            "${ROOTFS_DIR}/etc/systemd/system"
 cp -a /tmp/edge-kit-src/edge-kit/templates/.   "${ROOTFS_DIR}/usr/local/lib/maps-edge/templates/"
 cp -a /tmp/edge-kit-src/edge-kit/units/.       "${ROOTFS_DIR}/usr/local/lib/maps-edge/units/"
-cp -a /tmp/edge-kit-src/edge-kit/maps-logger/. "${ROOTFS_DIR}/usr/local/lib/maps-edge/maps-logger/"
 # EVERY top-level kit executable (activate, can-mirror, enroll, cert-renew,
 # wifi-watchdog, nm-dispatcher-dns, ...): activation installs the rest of the
 # kit from /usr/local/lib/maps-edge at first boot, so a script missing here is
@@ -59,7 +57,10 @@ on_chroot << EOF
 set -e
 apt-get update
 # mosquitto-clients: the live routing gate (edge-route-test) publishes/subscribes
-# on the node itself; netcat for activation's MAPS health probe.
+# on the node itself; netcat for activation's MAPS health probe. maps-apps (the
+# MAPS Value Logger + tools, same daily channel the MAPS stage tracks) is
+# installed by activation at first boot, not baked here: its postinst enables
+# units, which would break this stage's inertness guarantee.
 apt-get install -y curl unzip gettext-base dnsmasq jq mosquitto-clients netcat-openbsd
 # dnsmasq stays disabled until activation wires the consul resolver
 systemctl disable dnsmasq || true
