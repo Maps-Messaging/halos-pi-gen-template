@@ -27,26 +27,27 @@ curl -fsSL ${EDGE_KIT_TOKEN:+-H "Authorization: Bearer ${EDGE_KIT_TOKEN}"} \
 install -d "${ROOTFS_DIR}/usr/local/lib/maps-edge/units" \
            "${ROOTFS_DIR}/usr/local/lib/maps-edge/templates" \
            "${ROOTFS_DIR}/usr/local/bin" \
+           "${ROOTFS_DIR}/usr/local/lib/maps-edge/maps-logger" \
            "${ROOTFS_DIR}/etc/systemd/system"
-cp -a /tmp/edge-kit-src/edge-kit/templates/. "${ROOTFS_DIR}/usr/local/lib/maps-edge/templates/"
-install -m 0755 /tmp/edge-kit-src/edge-kit/maps-edge-activate \
-  "${ROOTFS_DIR}/usr/local/lib/maps-edge/maps-edge-activate"
+cp -a /tmp/edge-kit-src/edge-kit/templates/.   "${ROOTFS_DIR}/usr/local/lib/maps-edge/templates/"
+cp -a /tmp/edge-kit-src/edge-kit/units/.       "${ROOTFS_DIR}/usr/local/lib/maps-edge/units/"
+cp -a /tmp/edge-kit-src/edge-kit/maps-logger/. "${ROOTFS_DIR}/usr/local/lib/maps-edge/maps-logger/"
+# EVERY top-level kit executable (activate, can-mirror, enroll, cert-renew,
+# wifi-watchdog, nm-dispatcher-dns, ...): activation installs the rest of the
+# kit from /usr/local/lib/maps-edge at first boot, so a script missing here is
+# a feature silently missing on every box flashed from this image -- the
+# 2026-08-10 image shipped without the identity scripts for exactly that reason.
+for f in /tmp/edge-kit-src/edge-kit/*; do
+  [ -f "$f" ] || continue
+  install -m 0755 "$f" "${ROOTFS_DIR}/usr/local/lib/maps-edge/$(basename "$f")"
+done
 install -m 0755 /tmp/edge-kit-src/ansible/roles/consul_wan_join/files/maps-consul-wan-join \
   "${ROOTFS_DIR}/usr/local/lib/maps-edge/maps-consul-wan-join"
 install -m 0644 /tmp/edge-kit-src/edge-kit/units/*.service \
                 /tmp/edge-kit-src/edge-kit/units/*.timer \
   "${ROOTFS_DIR}/etc/systemd/system/"
-# Other edge-kit entry points, installed when present so that merging a new
-# component (e.g. the CAN mirror, or the identity enrol/renew scripts) cannot
-# leave it silently absent from the image while everything still builds green.
-for _bin in maps-edge-can-mirror maps-edge-enroll maps-edge-cert-renew; do
-  if [ -f "/tmp/edge-kit-src/edge-kit/${_bin}" ]; then
-    install -m 0755 "/tmp/edge-kit-src/edge-kit/${_bin}" \
-      "${ROOTFS_DIR}/usr/local/lib/maps-edge/${_bin}"
-    echo "  + ${_bin}"
-  fi
-done
 ln -sf /usr/local/lib/maps-edge/maps-edge-activate "${ROOTFS_DIR}/usr/local/bin/maps-edge-activate"
+ln -sf /usr/local/lib/maps-edge/maps-edge-can-mirror "${ROOTFS_DIR}/usr/local/bin/maps-edge-can-mirror"
 
 # NOTE: the delimiter is deliberately UNQUOTED so ${CONSUL_VERSION} below is
 # expanded by THIS shell before the chroot sees it. That also means every
@@ -57,7 +58,9 @@ ln -sf /usr/local/lib/maps-edge/maps-edge-activate "${ROOTFS_DIR}/usr/local/bin/
 on_chroot << EOF
 set -e
 apt-get update
-apt-get install -y curl unzip gettext-base dnsmasq jq
+# mosquitto-clients: the live routing gate (edge-route-test) publishes/subscribes
+# on the node itself; netcat for activation's MAPS health probe.
+apt-get install -y curl unzip gettext-base dnsmasq jq mosquitto-clients netcat-openbsd
 # dnsmasq stays disabled until activation wires the consul resolver
 systemctl disable dnsmasq || true
 # tailscale (official repo, bookworm)
